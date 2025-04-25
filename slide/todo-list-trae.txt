@@ -1,0 +1,195 @@
+import 'package:flutter/material.dart';
+
+// Todo Model
+class Todo {
+  final String id;
+  final String title;
+  bool isCompleted;
+
+  Todo({required this.id, required this.title, this.isCompleted = false});
+}
+
+// Todo Item Widget
+class TodoItem extends StatelessWidget {
+  final Todo todo;
+  final Function(String) onToggle;
+  final Function(String) onDelete;
+  final Function(String, String) onUpdate;
+
+  const TodoItem({
+    Key? key,
+    required this.todo,
+    required this.onToggle,
+    required this.onDelete,
+    required this.onUpdate,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Dismissible(
+      key: Key(todo.id),
+      background: Container(
+        color: Colors.red,
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 16.0),
+        child: const Icon(Icons.delete, color: Colors.white),
+      ),
+      direction: DismissDirection.endToStart,
+      onDismissed: (_) => onDelete(todo.id),
+      child: ListTile(
+        leading: Checkbox(
+          value: todo.isCompleted,
+          onChanged: (_) => onToggle(todo.id),
+        ),
+        title: Text(
+          todo.title,
+          style: TextStyle(
+            decoration: todo.isCompleted ? TextDecoration.lineThrough : null,
+          ),
+        ),
+        trailing: IconButton(
+          icon: const Icon(Icons.edit),
+          onPressed: () {
+            final TextEditingController controller = TextEditingController(
+              text: todo.title,
+            );
+            showDialog(
+              context: context,
+              builder:
+                  (context) => AlertDialog(
+                    title: const Text('Edit Todo'),
+                    content: TextField(
+                      controller: controller,
+                      decoration: const InputDecoration(
+                        labelText: 'Todo Title',
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          if (controller.text.isNotEmpty) {
+                            onUpdate(todo.id, controller.text);
+                            Navigator.pop(context);
+                          }
+                        },
+                        child: const Text('Save'),
+                      ),
+                    ],
+                  ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+// Todo List Screen
+class TodoListScreen extends StatefulWidget {
+  const TodoListScreen({Key? key}) : super(key: key);
+
+  @override
+  State<TodoListScreen> createState() => _TodoListScreenState();
+}
+
+class _TodoListScreenState extends State<TodoListScreen> {
+  final List<Todo> _todos = [];
+
+  void _addTodo(String title) {
+    setState(() {
+      _todos.add(Todo(id: DateTime.now().toString(), title: title));
+    });
+  }
+
+  void _toggleTodo(String id) {
+    setState(() {
+      final todo = _todos.firstWhere((todo) => todo.id == id);
+      todo.isCompleted = !todo.isCompleted;
+    });
+  }
+
+  void _deleteTodo(String id) {
+    setState(() {
+      _todos.removeWhere((todo) => todo.id == id);
+    });
+  }
+
+  void _updateTodoTitle(String id, String newTitle) {
+    setState(() {
+      final todo = _todos.firstWhere((todo) => todo.id == id);
+      if (todo.title != newTitle) {
+        // Since title is final, we need to create a new Todo object with the updated title
+        _todos[_todos.indexWhere((t) => t.id == id)] = Todo(
+          id: todo.id,
+          title: newTitle,
+          isCompleted: todo.isCompleted,
+        );
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Todo List'), centerTitle: true),
+      body:
+          _todos.isEmpty
+              ? const Center(
+                child: Text(
+                  'No todos yet!\nAdd your first todo below.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 18),
+                ),
+              )
+              : ListView.builder(
+                itemCount: _todos.length,
+                itemBuilder: (context, index) {
+                  final todo = _todos[index];
+                  return TodoItem(
+                    todo: todo,
+                    onToggle: _toggleTodo,
+                    onDelete: _deleteTodo,
+                    onUpdate: _updateTodoTitle,
+                  );
+                },
+              ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          final TextEditingController controller = TextEditingController();
+          showDialog(
+            context: context,
+            builder:
+                (context) => AlertDialog(
+                  title: const Text('Add Todo'),
+                  content: TextField(
+                    controller: controller,
+                    decoration: const InputDecoration(labelText: 'Todo Title'),
+                    autofocus: true,
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        if (controller.text.isNotEmpty) {
+                          _addTodo(controller.text);
+                          Navigator.pop(context);
+                        }
+                      },
+                      child: const Text('Add'),
+                    ),
+                  ],
+                ),
+          );
+        },
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
